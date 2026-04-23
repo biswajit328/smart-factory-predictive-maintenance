@@ -12,7 +12,7 @@ Predict equipment failure before breakdown using machine telemetry, so maintenan
 ## Repository Structure
 
 ```text
-smart-factory-predictive-maintenance/
+./
 ├── data/
 ├── notebooks/
 ├── src/
