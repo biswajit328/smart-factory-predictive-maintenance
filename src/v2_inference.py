@@ -73,6 +73,12 @@ class NeuralPredictiveMaintenanceService:
             required_sensors=self.metadata["required_sensor_columns"]
         )
 
+    def reset_state(self) -> None:
+        self.machine_buffers.clear()
+        self.event_fusion_buffer = SensorEventFusionBuffer(
+            required_sensors=self.metadata["required_sensor_columns"]
+        )
+
     def _build_feature_row(self, fused_reading: dict[str, object]) -> dict[str, float]:
         row = {column: float(fused_reading[column]) for column in SIMULATED_SENSOR_COLUMNS}
         machine_type = str(fused_reading["machine_type"])

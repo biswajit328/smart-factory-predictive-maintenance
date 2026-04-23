@@ -46,6 +46,7 @@ What it does in easy words:
 - It trains a neural temporal fusion model to predict whether a breakdown is coming soon.
 - It replays sensor events one by one like a live system.
 - It generates a dashboard-style HTML report with machine risk timelines and maintenance priority.
+- It now also exposes a FastAPI service layer for health checks, predictions, stream resets, and simulation runs.
 
 Example benchmark from the current saved v2 run:
 
@@ -78,6 +79,7 @@ flowchart LR
 - `src/v2_train.py`: trains the neural model and saves v2 artifacts.
 - `src/v2_inference.py`: replays event streams and produces live predictions.
 - `src/v2_dashboard.py`: creates an HTML dashboard report from the live predictions.
+- `src/v2_api.py`: serves the v2 model through FastAPI.
 
 ## Why These Changes Matter
 
@@ -140,6 +142,18 @@ Run the live smart-factory demo:
 python -m src.v2_inference --live-demo
 ```
 
+Run the FastAPI service:
+
+```bash
+python -m src.v2_api
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
 Generate the dashboard again from saved CSV files:
 
 ```bash
@@ -171,6 +185,16 @@ After running `python -m src.v2_inference --live-demo`, it also saves:
 
 - `live_predictions.csv`
 - `smart_factory_dashboard.html`
+
+## FastAPI Endpoints
+
+- `GET /health`: shows whether the v2 artifacts are present and whether the service is loaded.
+- `GET /metadata`: returns the model metadata and required sensor schema.
+- `POST /predict/fused`: sends one full fused machine reading.
+- `POST /predict/events`: sends one or more sensor events and lets the API buffer them until a full reading is ready.
+- `POST /stream/reset`: clears the in-memory stream buffers.
+- `POST /simulate/run`: runs a full live simulation and returns top alerts plus dashboard paths.
+- `GET /examples/fused-reading`: returns a valid example payload.
 
 ## Project Structure
 

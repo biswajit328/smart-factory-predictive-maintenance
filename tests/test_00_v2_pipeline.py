@@ -9,9 +9,9 @@ class V2PipelineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.bundle, cls.metrics = train_smart_factory_v2(
-            num_machines=6,
-            steps=70,
-            epochs=2,
+            num_machines=8,
+            steps=90,
+            epochs=3,
             batch_size=16,
             save_artifacts=False,
         )
@@ -42,4 +42,3 @@ class V2PipelineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
