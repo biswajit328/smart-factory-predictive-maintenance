@@ -12,9 +12,8 @@ Predict equipment failure before breakdown using machine telemetry, so maintenan
 ## Repository Structure
 
 ```text
-./
+project_root/
 ├── data/
-├── notebooks/
 ├── src/
 │   ├── train.py
 │   ├── inference.py
