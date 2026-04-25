@@ -1,0 +1,4 @@
+branch,baseline_pr_auc,ablated_pr_auc,pr_auc_drop,baseline_roc_auc,ablated_roc_auc,roc_auc_drop
+electrical,0.889,0.406,0.483,0.9928,0.9299,0.0629
+thermal,0.889,0.7216,0.1674,0.9928,0.9819,0.0109
+mechanical,0.889,0.9097,-0.0207,0.9928,0.9931,-0.0003

@@ -289,6 +289,7 @@ def evaluate_temporal_fusion_model(
         y_true=test_labels,
         probabilities=test_probabilities,
         threshold=threshold_selection.threshold,
+        beta=V2_THRESHOLD_BETA,
     )
     metrics_payload = {
         "threshold_selection": threshold_selection.to_dict(),

@@ -1,0 +1,14 @@
+feature,importance
+num__Torque [Nm],0.1521189339446185
+num__rpm_per_temp,0.14136460489919517
+num__power_w,0.13775353717274655
+num__Tool wear [min],0.13130922443766402
+num__Rotational speed [rpm],0.1306165299541699
+num__wear_torque_interaction,0.0954318843991131
+num__temp_delta_k,0.07270979371753253
+num__thermal_stress_index,0.06712049597889054
+num__Air temperature [K],0.03732824402190716
+num__Process temperature [K],0.024838783487680257
+cat__Type_L,0.003893696766936881
+cat__Type_M,0.0035697502208957513
+cat__Type_H,0.001944520998649477

@@ -1,11 +1,32 @@
+import os
 from pathlib import Path
+
+
+def _env_int(name: str, default: int) -> int:
+    return int(os.getenv(name, str(default)))
+
+
+def _env_float(name: str, default: float) -> float:
+    return float(os.getenv(name, str(default)))
+
+
+def _env_path(name: str, default: Path) -> Path:
+    return Path(os.getenv(name, str(default))).expanduser()
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data"
-OUTPUT_DIR = ROOT_DIR / "outputs"
+OUTPUT_DIR = _env_path("PM_OUTPUT_DIR", ROOT_DIR / "outputs")
 V2_OUTPUT_DIR = OUTPUT_DIR / "v2"
 
-RAW_DATA_PATH = DATA_DIR / "predictive_maintenance.csv"
+
+def repo_relative(path: str | Path) -> str:
+    resolved = Path(path).resolve()
+    try:
+        return resolved.relative_to(ROOT_DIR).as_posix()
+    except ValueError:
+        return str(path)
+
+RAW_DATA_PATH = _env_path("PM_RAW_DATA_PATH", DATA_DIR / "predictive_maintenance.csv")
 MODEL_BUNDLE_PATH = OUTPUT_DIR / "model_bundle.joblib"
 METRICS_PATH = OUTPUT_DIR / "metrics.json"
 CLASSIFICATION_REPORT_PATH = OUTPUT_DIR / "classification_report.txt"
@@ -13,6 +34,8 @@ FEATURE_IMPORTANCE_PATH = OUTPUT_DIR / "feature_importance.csv"
 CONFUSION_MATRIX_PATH = OUTPUT_DIR / "confusion_matrix.png"
 PRECISION_RECALL_CURVE_PATH = OUTPUT_DIR / "precision_recall_curve.png"
 ROC_CURVE_PATH = OUTPUT_DIR / "roc_curve.png"
+CALIBRATION_CURVE_PATH = OUTPUT_DIR / "calibration_curve.png"
+THRESHOLD_ANALYSIS_PATH = OUTPUT_DIR / "threshold_analysis.csv"
 PROBABILITY_DISTRIBUTION_PATH = OUTPUT_DIR / "probability_distribution.png"
 FEATURE_IMPORTANCE_PLOT_PATH = OUTPUT_DIR / "feature_importance.png"
 V2_MODEL_PATH = V2_OUTPUT_DIR / "temporal_fusion_model.keras"
@@ -26,6 +49,10 @@ V2_LIVE_PREDICTIONS_PATH = V2_OUTPUT_DIR / "live_predictions.csv"
 V2_TRAINING_HISTORY_PATH = V2_OUTPUT_DIR / "training_history.png"
 V2_ROC_CURVE_PATH = V2_OUTPUT_DIR / "roc_curve.png"
 V2_PR_CURVE_PATH = V2_OUTPUT_DIR / "precision_recall_curve.png"
+V2_CALIBRATION_CURVE_PATH = V2_OUTPUT_DIR / "calibration_curve.png"
+V2_THRESHOLD_ANALYSIS_PATH = V2_OUTPUT_DIR / "threshold_analysis.csv"
+V2_BRANCH_IMPORTANCE_PATH = V2_OUTPUT_DIR / "branch_importance.csv"
+V2_BRANCH_IMPORTANCE_PLOT_PATH = V2_OUTPUT_DIR / "branch_importance.png"
 V2_DASHBOARD_PATH = V2_OUTPUT_DIR / "smart_factory_dashboard.html"
 
 TARGET_COL = "Machine failure"
@@ -41,12 +68,16 @@ ID_COLUMNS = ["UDI", "Product ID"]
 LEAKAGE_COLUMNS = ["TWF", "HDF", "PWF", "OSF", "RNF"]
 RAW_INPUT_COLUMNS = CATEGORICAL_COLS + SENSOR_COLS
 
-RANDOM_STATE = 42
-TEST_SIZE = 0.20
-VAL_SIZE = 0.10
-THRESHOLD_PRECISION_FLOOR = 0.60
-THRESHOLD_BETA = 2.0
-ANOMALY_QUANTILE = 0.95
+RANDOM_STATE = _env_int("PM_RANDOM_STATE", 42)
+TEST_SIZE = _env_float("PM_TEST_SIZE", 0.20)
+VAL_SIZE = _env_float("PM_VAL_SIZE", 0.10)
+THRESHOLD_PRECISION_FLOOR = _env_float("PM_THRESHOLD_PRECISION_FLOOR", 0.60)
+THRESHOLD_BETA = _env_float("PM_THRESHOLD_BETA", 2.0)
+ANOMALY_QUANTILE = _env_float("PM_ANOMALY_QUANTILE", 0.95)
+
+API_HOST = os.getenv("PM_API_HOST", "127.0.0.1")
+API_PORT = _env_int("PM_API_PORT", 8000)
+LOG_LEVEL = os.getenv("PM_LOG_LEVEL", "INFO").upper()
 
 SIMULATED_SENSOR_COLUMNS = [
     "air_temp_k",
@@ -97,12 +128,12 @@ SENSOR_GROUP_MAP = {
     "acoustic_db": "electrical",
 }
 
-V2_WINDOW_SIZE = 18
-V2_HORIZON_STEPS = 8
-V2_FREQ_MINUTES = 5
-V2_NUM_MACHINES = 10
-V2_NUM_STEPS = 120
-V2_EPOCHS = 5
-V2_BATCH_SIZE = 16
-V2_THRESHOLD_PRECISION_FLOOR = 0.25
-V2_THRESHOLD_BETA = 3.0
+V2_WINDOW_SIZE = _env_int("PM_V2_WINDOW_SIZE", 18)
+V2_HORIZON_STEPS = _env_int("PM_V2_HORIZON_STEPS", 8)
+V2_FREQ_MINUTES = _env_int("PM_V2_FREQ_MINUTES", 5)
+V2_NUM_MACHINES = _env_int("PM_V2_NUM_MACHINES", 10)
+V2_NUM_STEPS = _env_int("PM_V2_NUM_STEPS", 120)
+V2_EPOCHS = _env_int("PM_V2_EPOCHS", 5)
+V2_BATCH_SIZE = _env_int("PM_V2_BATCH_SIZE", 16)
+V2_THRESHOLD_PRECISION_FLOOR = _env_float("PM_V2_THRESHOLD_PRECISION_FLOOR", 0.25)
+V2_THRESHOLD_BETA = _env_float("PM_V2_THRESHOLD_BETA", 3.0)

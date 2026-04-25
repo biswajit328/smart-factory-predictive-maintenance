@@ -2,7 +2,7 @@
 
 A predictive maintenance system that takes machine sensor data, turns it into failure-risk signals, and serves predictions through scripts, live stream simulation, dashboard output, and a FastAPI backend.
 
-Easy meaning: this is not only a model training notebook. I tried to build the surrounding system too.
+Easy meaning: this is not only a model training notebook. I built the training pipeline, streaming simulation, model serving layer, evaluation artifacts, tests, and deployment scaffolding around it.
 
 ## Core Idea
 
@@ -20,10 +20,14 @@ After running the v2 pipeline, the project generates visual and service outputs 
 - Training curve: [`outputs/v2/training_history.png`](outputs/v2/training_history.png)
 - Precision-recall curve: [`outputs/v2/precision_recall_curve.png`](outputs/v2/precision_recall_curve.png)
 - ROC curve: [`outputs/v2/roc_curve.png`](outputs/v2/roc_curve.png)
+- Calibration curve: [`outputs/v2/calibration_curve.png`](outputs/v2/calibration_curve.png)
+- Sensor branch importance: [`outputs/v2/branch_importance.png`](outputs/v2/branch_importance.png)
 
 ![v2 training history](outputs/v2/training_history.png)
 
 ![v2 precision recall curve](outputs/v2/precision_recall_curve.png)
+
+![v2 branch importance](outputs/v2/branch_importance.png)
 
 ## What This Project Does
 
@@ -37,6 +41,8 @@ This uses the original predictive maintenance dataset as a normal tabular ML pro
 
 This adds the system I actually wanted to build for the project idea: multi-machine sensor streams, sensor event fusion, rolling windows, a neural temporal fusion model, live inference, an HTML dashboard, and a FastAPI service.
 
+It also saves calibration plots, threshold analysis, and branch-level importance so the model is not just a black box with a nice score.
+
 The original dataset is not a real streaming factory dataset, so the v2 stream is simulated using realistic ranges from the original data. I am keeping that clear because fake claims make a project weaker, not stronger.
 
 ## System Flow
@@ -49,8 +55,10 @@ The original dataset is not a real streaming factory dataset, so the v2 stream i
 6. Keep a rolling time window for each machine.
 7. Split features into thermal, mechanical, and electrical sensor groups.
 8. Send those groups into a neural temporal fusion model.
-9. Produce failure probability, risk band, and maintenance recommendation.
-10. Serve the result through FastAPI and save dashboard/report outputs.
+9. Pick an alert threshold using validation data.
+10. Produce failure probability, risk band, and maintenance recommendation.
+11. Save calibration, threshold, and branch-importance evidence.
+12. Serve the result through FastAPI and save dashboard/report outputs.
 
 ## Architecture
 
@@ -79,6 +87,7 @@ The interesting part is the connection between the ML and the system design:
 - Each machine keeps its own memory buffer.
 - The output is not only `0` or `1`; it becomes a risk score and maintenance action.
 - The classical baseline is still kept, so the neural part has something honest to compare against.
+- The project includes API tests, Docker setup, and CI instead of only local scripts.
 
 ## Current Results
 
@@ -108,6 +117,12 @@ These results come from the simulated smart-factory stream, not real plant telem
 
 For maintenance use cases, recall matters a lot because missing a failure can be expensive. I still track precision because too many false alarms would also be annoying in a real factory.
 
+The v2 pipeline also produces:
+
+- threshold analysis: [`outputs/v2/threshold_analysis.csv`](outputs/v2/threshold_analysis.csv)
+- calibration plot: [`outputs/v2/calibration_curve.png`](outputs/v2/calibration_curve.png)
+- branch importance: [`outputs/v2/branch_importance.csv`](outputs/v2/branch_importance.csv)
+
 ## Engineering Decisions
 
 **I kept v1 as a baseline.**
@@ -126,9 +141,17 @@ Thermal, mechanical, and electrical signals are handled as separate branches bef
 
 In a real system, sensors may not arrive as one perfect row. The API can receive sensor events one by one and fuse them when a complete reading is ready.
 
+**I added calibration and threshold analysis.**
+
+Accuracy alone is not enough for maintenance. I need to know how the threshold changes false alarms and missed failures, and whether predicted probabilities are believable.
+
+**I added branch ablation for the neural model.**
+
+Instead of only saying "multi-sensor fusion", the pipeline checks what happens when thermal, mechanical, or electrical branches are removed from the model input.
+
 **I kept the deployment simple.**
 
-FastAPI is enough for this stage. The API exposes health checks, metadata, predictions, stream reset, and simulation runs without adding unnecessary infrastructure.
+FastAPI is enough for this stage. The API exposes health checks, metadata, predictions, stream reset, and simulation runs. Docker and GitHub Actions are included so the project is easier to run and verify.
 
 ## Tech Stack
 
@@ -138,6 +161,8 @@ FastAPI is enough for this stage. The API exposes health checks, metadata, predi
 - FastAPI + Uvicorn
 - Plotly / Matplotlib
 - unittest
+- Docker
+- GitHub Actions
 
 ## How To Run
 
@@ -201,6 +226,37 @@ Run tests:
 python -m unittest discover -s tests -v
 ```
 
+## Docker Option
+
+Build the container:
+
+```bash
+docker compose build
+```
+
+Train v2 inside Docker:
+
+```bash
+docker compose run --rm api python -m src.v2_train
+```
+
+Start the API:
+
+```bash
+docker compose up api
+```
+
+## Quality Checks
+
+This repo includes:
+
+- unit and smoke tests in [`tests/`](tests/)
+- GitHub Actions workflow in [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+- Docker setup through [`Dockerfile`](Dockerfile) and [`docker-compose.yml`](docker-compose.yml)
+- JSON-style logs through [`src/logging_utils.py`](src/logging_utils.py)
+- API examples in [`docs/api_examples.md`](docs/api_examples.md)
+- deployment notes in [`docs/deployment_notes.md`](docs/deployment_notes.md)
+
 ## FastAPI Endpoints
 
 | Endpoint | Purpose |
@@ -225,10 +281,14 @@ predictive_maintenance/
 |   `-- 03_modelling.ipynb
 |-- outputs/
 |   |-- metrics.json
+|   |-- calibration_curve.png
+|   |-- threshold_analysis.csv
 |   |-- model_bundle.joblib
 |   `-- v2/
 |       |-- temporal_fusion_model.keras
 |       |-- neural_metrics.json
+|       |-- calibration_curve.png
+|       |-- branch_importance.csv
 |       |-- live_predictions.csv
 |       `-- smart_factory_dashboard.html
 |-- src/
@@ -258,6 +318,8 @@ The v1 pipeline saves:
 - feature importance
 - scored predictions
 - ROC and precision-recall plots
+- calibration curve
+- threshold analysis CSV
 
 The v2 pipeline saves:
 
@@ -269,6 +331,9 @@ The v2 pipeline saves:
 - live prediction output
 - dashboard HTML
 - training and evaluation plots
+- threshold analysis CSV
+- calibration curve
+- branch importance CSV and plot
 
 ## Known Limitations
 

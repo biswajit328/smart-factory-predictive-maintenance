@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 import uvicorn
 
 from .config import (
+    API_HOST,
+    API_PORT,
     SIMULATED_SENSOR_COLUMNS,
     V2_DASHBOARD_PATH,
     V2_LIVE_PREDICTIONS_PATH,
@@ -18,6 +20,10 @@ from .config import (
     V2_MODEL_PATH,
     V2_SCALERS_PATH,
 )
+from .logging_utils import configure_logging, get_logger
+
+
+logger = get_logger(__name__)
 
 
 class FusedReadingRequest(BaseModel):
@@ -96,6 +102,10 @@ class ApiRuntime:
                 metadata_path=V2_METADATA_PATH,
             )
             self.loaded_at = datetime.utcnow().isoformat() + "Z"
+            logger.info(
+                "v2_service_loaded",
+                extra={"loaded_at": self.loaded_at},
+            )
         return self.service
 
 
@@ -234,9 +244,10 @@ app = create_app()
 
 
 def main() -> None:
-    uvicorn.run("src.v2_api:app", host="127.0.0.1", port=8000, reload=False)
+    configure_logging()
+    logger.info("starting_api", extra={"host": API_HOST, "port": API_PORT})
+    uvicorn.run("src.v2_api:app", host=API_HOST, port=API_PORT, reload=False)
 
 
 if __name__ == "__main__":
     main()
-

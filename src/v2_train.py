@@ -8,6 +8,9 @@ from pathlib import Path
 from .config import (
     RANDOM_STATE,
     V2_BATCH_SIZE,
+    V2_BRANCH_IMPORTANCE_PATH,
+    V2_BRANCH_IMPORTANCE_PLOT_PATH,
+    V2_CALIBRATION_CURVE_PATH,
     V2_EPOCHS,
     V2_METRICS_PATH,
     V2_MODEL_PATH,
@@ -20,10 +23,14 @@ from .config import (
     V2_SENSOR_EVENTS_PATH,
     V2_SIMULATED_STREAM_PATH,
     V2_TEST_PREDICTIONS_PATH,
+    V2_THRESHOLD_ANALYSIS_PATH,
+    V2_THRESHOLD_BETA,
     V2_TRAINING_HISTORY_PATH,
     V2_WINDOW_SIZE,
     V2_METADATA_PATH,
+    repo_relative,
 )
+from .logging_utils import configure_logging, get_logger
 from .v2_neural import (
     build_sequence_dataset,
     build_split_masks,
@@ -36,14 +43,20 @@ from .v2_neural import (
     train_temporal_fusion_model,
     transform_branch_inputs,
 )
+from .model import build_threshold_analysis
 from .v2_streaming import simulate_factory_stream, to_sensor_events
 
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn.metrics import precision_recall_curve, roc_curve
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import average_precision_score, precision_recall_curve, roc_auc_score, roc_curve
+
+
+logger = get_logger(__name__)
 
 
 def _save_probability_curves(
@@ -73,6 +86,72 @@ def _save_probability_curves(
     ax.grid(alpha=0.3)
     fig.tight_layout()
     fig.savefig(V2_ROC_CURVE_PATH, dpi=150)
+    plt.close(fig)
+
+
+def _save_calibration_plot(y_true, probabilities, brier_score: float) -> None:
+    observed_rate, predicted_rate = calibration_curve(
+        y_true,
+        probabilities,
+        n_bins=8,
+        strategy="quantile",
+    )
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.plot(predicted_rate, observed_rate, marker="o", lw=2, label="model")
+    ax.plot([0, 1], [0, 1], "k--", lw=1, label="perfect calibration")
+    ax.set_xlabel("Mean predicted probability")
+    ax.set_ylabel("Observed failure rate")
+    ax.set_title(f"Neural Calibration (Brier = {brier_score:.3f})")
+    ax.grid(alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(V2_CALIBRATION_CURVE_PATH, dpi=150)
+    plt.close(fig)
+
+
+def _compute_branch_importance(
+    model,
+    test_inputs: dict[str, np.ndarray],
+    test_labels: np.ndarray,
+    baseline_pr_auc: float,
+    baseline_roc_auc: float,
+) -> pd.DataFrame:
+    rows = []
+
+    for group_name in test_inputs:
+        ablated_inputs = {
+            name: values.copy()
+            for name, values in test_inputs.items()
+        }
+        ablated_inputs[group_name] = np.zeros_like(ablated_inputs[group_name])
+
+        ablated_probabilities = model.predict(ablated_inputs, verbose=0).ravel()
+        ablated_pr_auc = float(average_precision_score(test_labels, ablated_probabilities))
+        ablated_roc_auc = float(roc_auc_score(test_labels, ablated_probabilities))
+        rows.append(
+            {
+                "branch": group_name,
+                "baseline_pr_auc": round(float(baseline_pr_auc), 4),
+                "ablated_pr_auc": round(ablated_pr_auc, 4),
+                "pr_auc_drop": round(float(baseline_pr_auc - ablated_pr_auc), 4),
+                "baseline_roc_auc": round(float(baseline_roc_auc), 4),
+                "ablated_roc_auc": round(ablated_roc_auc, 4),
+                "roc_auc_drop": round(float(baseline_roc_auc - ablated_roc_auc), 4),
+            }
+        )
+
+    return pd.DataFrame(rows).sort_values("pr_auc_drop", ascending=False).reset_index(drop=True)
+
+
+def _save_branch_importance_plot(branch_importance: pd.DataFrame) -> None:
+    plot_frame = branch_importance.sort_values("pr_auc_drop")
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.barh(plot_frame["branch"], plot_frame["pr_auc_drop"], color="#2a9d8f")
+    ax.set_xlabel("PR-AUC drop after branch ablation")
+    ax.set_title("Neural Sensor Branch Importance")
+    ax.grid(axis="x", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(V2_BRANCH_IMPORTANCE_PLOT_PATH, dpi=150)
     plt.close(fig)
 
 
@@ -127,6 +206,18 @@ def train_smart_factory_v2(
         test_inputs=test_inputs,
         test_labels=y_test,
     )
+    threshold_analysis = build_threshold_analysis(
+        y_test,
+        test_probabilities,
+        beta=V2_THRESHOLD_BETA,
+    )
+    branch_importance = _compute_branch_importance(
+        model=model,
+        test_inputs=test_inputs,
+        test_labels=y_test,
+        baseline_pr_auc=evaluation["classification"]["pr_auc"],
+        baseline_roc_auc=evaluation["classification"]["roc_auc"],
+    )
 
     test_metadata = sequence_dataset.metadata.loc[split_masks["test"]].copy().reset_index(drop=True)
     threshold = evaluation["threshold_selection"]["threshold"]
@@ -169,6 +260,11 @@ def train_smart_factory_v2(
                 "electrical": ["pressure_bar", "current_a", "acoustic_db"],
             },
         },
+        "calibration": {
+            "brier_score": evaluation["classification"]["brier_score"],
+            "plot_path": repo_relative(V2_CALIBRATION_CURVE_PATH),
+        },
+        "branch_importance": branch_importance.to_dict(orient="records"),
         **evaluation,
     }
 
@@ -198,6 +294,7 @@ def train_smart_factory_v2(
         "stream_df": stream_df,
         "sensor_events_df": sensor_events_df,
         "test_predictions_df": test_metadata,
+        "branch_importance_df": branch_importance,
         "metrics": metrics_payload,
     }
 
@@ -210,6 +307,8 @@ def train_smart_factory_v2(
         stream_df.to_csv(V2_SIMULATED_STREAM_PATH, index=False)
         sensor_events_df.to_csv(V2_SENSOR_EVENTS_PATH, index=False)
         test_metadata.to_csv(V2_TEST_PREDICTIONS_PATH, index=False)
+        threshold_analysis.to_csv(V2_THRESHOLD_ANALYSIS_PATH, index=False)
+        branch_importance.to_csv(V2_BRANCH_IMPORTANCE_PATH, index=False)
         save_training_history_plot(history, V2_TRAINING_HISTORY_PATH)
         _save_probability_curves(
             y_true=y_test,
@@ -217,6 +316,12 @@ def train_smart_factory_v2(
             roc_auc=evaluation["classification"]["roc_auc"],
             pr_auc=evaluation["classification"]["pr_auc"],
         )
+        _save_calibration_plot(
+            y_true=y_test,
+            probabilities=test_probabilities,
+            brier_score=evaluation["classification"]["brier_score"],
+        )
+        _save_branch_importance_plot(branch_importance)
 
     return bundle, metrics_payload
 
@@ -231,6 +336,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    configure_logging()
     parser = build_parser()
     args = parser.parse_args()
     _, metrics = train_smart_factory_v2(
@@ -246,6 +352,7 @@ def main() -> None:
         "recall": metrics["classification"]["recall"],
         "threshold": metrics["threshold_selection"]["threshold"],
     }
+    logger.info("v2_training_completed", extra=summary)
     print(json.dumps(summary, indent=2))
 
 

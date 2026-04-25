@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      PM_API_HOST: 0.0.0.0
+      PM_API_PORT: 8000
+      PM_LOG_LEVEL: INFO
+    volumes:
+      - ./outputs:/app/outputs

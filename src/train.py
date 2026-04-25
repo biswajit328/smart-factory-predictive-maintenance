@@ -10,10 +10,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from sklearn.calibration import calibration_curve
 from sklearn.metrics import precision_recall_curve, roc_curve
 
 from .anomaly import evaluate_anomaly_detector, fit_anomaly_detector
 from .config import (
+    CALIBRATION_CURVE_PATH,
     CLASSIFICATION_REPORT_PATH,
     CONFUSION_MATRIX_PATH,
     FEATURE_IMPORTANCE_PATH,
@@ -25,14 +27,21 @@ from .config import (
     PROBABILITY_DISTRIBUTION_PATH,
     RANDOM_STATE,
     ROC_CURVE_PATH,
+    THRESHOLD_ANALYSIS_PATH,
+    repo_relative,
 )
+from .logging_utils import configure_logging, get_logger
 from .model import (
     build_feature_importance_table,
+    build_threshold_analysis,
     build_training_pipeline,
     choose_probability_threshold,
     evaluate_classifier,
 )
 from .preprocess import build_preprocessor, load_raw_data, make_supervised_frame, split_dataset
+
+
+logger = get_logger(__name__)
 
 
 def _save_confusion_matrix_plot(confusion_matrix_values) -> None:
@@ -102,6 +111,26 @@ def _save_curve_plots(y_test, probabilities, pr_auc: float, roc_auc: float) -> N
     plt.close(fig)
 
 
+def _save_calibration_plot(y_test, probabilities, brier_score: float) -> None:
+    observed_rate, predicted_rate = calibration_curve(
+        y_test,
+        probabilities,
+        n_bins=10,
+        strategy="quantile",
+    )
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.plot(predicted_rate, observed_rate, marker="o", lw=2, label="model")
+    ax.plot([0, 1], [0, 1], "k--", lw=1, label="perfect calibration")
+    ax.set_xlabel("Mean predicted probability")
+    ax.set_ylabel("Observed failure rate")
+    ax.set_title(f"Calibration Curve (Brier = {brier_score:.3f})")
+    ax.grid(alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(CALIBRATION_CURVE_PATH, dpi=150)
+    plt.close(fig)
+
+
 def _save_feature_importance_artifacts(feature_importance: pd.DataFrame) -> None:
     feature_importance.to_csv(FEATURE_IMPORTANCE_PATH, index=False)
 
@@ -140,6 +169,7 @@ def train_project_model(
         probabilities=test_probabilities,
         threshold=threshold_selection.threshold,
     )
+    threshold_analysis = build_threshold_analysis(y_test, test_probabilities)
 
     transformed_train = pipeline.named_steps["preprocess"].transform(X_train)
     transformed_test = pipeline.named_steps["preprocess"].transform(X_test)
@@ -171,6 +201,10 @@ def train_project_model(
         "threshold_selection": threshold_selection.to_dict(),
         "classification": classifier_metrics,
         "anomaly_detection": anomaly_metrics,
+        "calibration": {
+            "brier_score": classifier_metrics["brier_score"],
+            "plot_path": repo_relative(CALIBRATION_CURVE_PATH),
+        },
         "top_features": feature_importance.head(10).to_dict(orient="records"),
     }
 
@@ -200,12 +234,19 @@ def train_project_model(
             roc_auc=classifier_metrics["roc_auc"],
         )
         _save_probability_plot(y_test=y_test, probabilities=test_probabilities)
+        _save_calibration_plot(
+            y_test=y_test,
+            probabilities=test_probabilities,
+            brier_score=classifier_metrics["brier_score"],
+        )
+        threshold_analysis.to_csv(THRESHOLD_ANALYSIS_PATH, index=False)
         _save_feature_importance_artifacts(feature_importance)
 
     return bundle, metrics_payload
 
 
 def main() -> None:
+    configure_logging()
     _, metrics = train_project_model()
     summary = {
         "pr_auc": metrics["classification"]["pr_auc"],
@@ -214,6 +255,7 @@ def main() -> None:
         "recall": metrics["classification"]["recall"],
         "threshold": metrics["threshold_selection"]["threshold"],
     }
+    logger.info("v1_training_completed", extra=summary)
     print(json.dumps(summary, indent=2))
 
 

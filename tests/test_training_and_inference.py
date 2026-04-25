@@ -42,6 +42,7 @@ class TrainingAndInferenceTests(unittest.TestCase):
         self.assertIn("classification", self.metrics)
         self.assertGreater(self.metrics["classification"]["roc_auc"], 0.5)
         self.assertIn("threshold_selection", self.metrics)
+        self.assertIn("calibration", self.metrics)
 
     def test_service_predict_one_returns_expected_keys(self):
         service = PredictiveMaintenanceService(self.bundle_path)
@@ -57,4 +58,3 @@ class TrainingAndInferenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -117,10 +117,40 @@ def choose_probability_threshold(
     )
 
 
+def build_threshold_analysis(
+    y_true,
+    probabilities,
+    beta: float = THRESHOLD_BETA,
+) -> pd.DataFrame:
+    y_true = np.asarray(y_true).astype(int)
+    probabilities = np.asarray(probabilities, dtype=float)
+    rows = []
+
+    for threshold in np.linspace(0.05, 0.95, 181):
+        predictions = (probabilities >= threshold).astype(int)
+        tn, fp, fn, tp = confusion_matrix(y_true, predictions, labels=[0, 1]).ravel()
+        rows.append(
+            {
+                "threshold": round(float(threshold), 4),
+                "precision": round(float(precision_score(y_true, predictions, zero_division=0)), 4),
+                "recall": round(float(recall_score(y_true, predictions, zero_division=0)), 4),
+                "fbeta": round(float(fbeta_score(y_true, predictions, beta=beta, zero_division=0)), 4),
+                "true_positives": int(tp),
+                "false_positives": int(fp),
+                "false_negatives": int(fn),
+                "true_negatives": int(tn),
+                "alert_rate": round(float(predictions.mean()), 4),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 def evaluate_classifier(
     y_true,
     probabilities,
     threshold: float,
+    beta: float = THRESHOLD_BETA,
 ) -> dict[str, float | int | list[list[int]] | str]:
     y_true = np.asarray(y_true).astype(int)
     probabilities = np.asarray(probabilities, dtype=float)
@@ -135,7 +165,7 @@ def evaluate_classifier(
         "brier_score": round(float(brier_score_loss(y_true, probabilities)), 4),
         "precision": round(float(precision_score(y_true, predictions, zero_division=0)), 4),
         "recall": round(float(recall_score(y_true, predictions, zero_division=0)), 4),
-        "fbeta": round(float(fbeta_score(y_true, predictions, beta=THRESHOLD_BETA, zero_division=0)), 4),
+        "fbeta": round(float(fbeta_score(y_true, predictions, beta=beta, zero_division=0)), 4),
         "accuracy": round(float((predictions == y_true).mean()), 4),
         "true_negatives": int(tn),
         "false_positives": int(fp),
@@ -165,4 +195,3 @@ def build_feature_importance_table(pipeline: Pipeline) -> pd.DataFrame:
         }
     )
     return importance_df.sort_values("importance", ascending=False).reset_index(drop=True)
-

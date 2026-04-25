@@ -1,0 +1,102 @@
+{
+  "run_timestamp": "2026-04-25T10:25:46.185675Z",
+  "dataset": {
+    "train_rows": 7000,
+    "val_rows": 1000,
+    "test_rows": 2000,
+    "train_failure_rate": 0.0339,
+    "val_failure_rate": 0.034,
+    "test_failure_rate": 0.034
+  },
+  "model": {
+    "name": "RandomForestClassifier",
+    "random_state": 42,
+    "notes": "Leakage-free tabular classifier trained on raw machine attributes plus engineered physics features."
+  },
+  "threshold_selection": {
+    "threshold": 0.46,
+    "precision": 0.9375,
+    "recall": 0.8824,
+    "fbeta": 0.8929,
+    "precision_floor_met": true,
+    "strategy": "Best F2.0 threshold while keeping precision >= 0.60"
+  },
+  "classification": {
+    "roc_auc": 0.9848,
+    "pr_auc": 0.8619,
+    "brier_score": 0.0097,
+    "precision": 0.9322,
+    "recall": 0.8088,
+    "fbeta": 0.8308,
+    "accuracy": 0.9915,
+    "true_negatives": 1928,
+    "false_positives": 4,
+    "false_negatives": 13,
+    "true_positives": 55,
+    "confusion_matrix": [
+      [
+        1928,
+        4
+      ],
+      [
+        13,
+        55
+      ]
+    ],
+    "classification_report": "              precision    recall  f1-score   support\n\n      Normal     0.9933    0.9979    0.9956      1932\n     Failure     0.9322    0.8088    0.8661        68\n\n    accuracy                         0.9915      2000\n   macro avg     0.9628    0.9034    0.9309      2000\nweighted avg     0.9912    0.9915    0.9912      2000\n"
+  },
+  "anomaly_detection": {
+    "threshold": 0.5696,
+    "roc_auc": 0.8373,
+    "pr_auc": 0.196,
+    "precision": 0.1695,
+    "recall": 0.2941,
+    "f1": 0.2151
+  },
+  "calibration": {
+    "brier_score": 0.0097,
+    "plot_path": "outputs/calibration_curve.png"
+  },
+  "top_features": [
+    {
+      "feature": "num__Torque [Nm]",
+      "importance": 0.1521189339446185
+    },
+    {
+      "feature": "num__rpm_per_temp",
+      "importance": 0.14136460489919517
+    },
+    {
+      "feature": "num__power_w",
+      "importance": 0.13775353717274655
+    },
+    {
+      "feature": "num__Tool wear [min]",
+      "importance": 0.13130922443766402
+    },
+    {
+      "feature": "num__Rotational speed [rpm]",
+      "importance": 0.1306165299541699
+    },
+    {
+      "feature": "num__wear_torque_interaction",
+      "importance": 0.0954318843991131
+    },
+    {
+      "feature": "num__temp_delta_k",
+      "importance": 0.07270979371753253
+    },
+    {
+      "feature": "num__thermal_stress_index",
+      "importance": 0.06712049597889054
+    },
+    {
+      "feature": "num__Air temperature [K]",
+      "importance": 0.03732824402190716
+    },
+    {
+      "feature": "num__Process temperature [K]",
+      "importance": 0.024838783487680257
+    }
+  ]
+}

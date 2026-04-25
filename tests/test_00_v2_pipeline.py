@@ -20,6 +20,7 @@ class V2PipelineTests(unittest.TestCase):
         self.assertIn("classification", self.metrics)
         self.assertGreater(self.metrics["classification"]["roc_auc"], 0.6)
         self.assertIn("threshold_selection", self.metrics)
+        self.assertIn("branch_importance", self.metrics)
 
     def test_live_service_emits_predictions(self):
         service = NeuralPredictiveMaintenanceService(

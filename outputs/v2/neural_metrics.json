@@ -1,0 +1,122 @@
+{
+  "run_timestamp": "2026-04-25T10:26:08.780626Z",
+  "simulator": {
+    "num_machines": 10,
+    "steps_per_machine": 120,
+    "window_size": 18,
+    "seed": 42
+  },
+  "splits": {
+    "train_machines": [
+      "M003",
+      "M002",
+      "M004",
+      "M009",
+      "M001",
+      "M008"
+    ],
+    "val_machines": [
+      "M000",
+      "M007"
+    ],
+    "test_machines": [
+      "M005",
+      "M006"
+    ],
+    "train_rows": 618,
+    "val_rows": 206,
+    "test_rows": 206,
+    "train_positive_rate": 0.0777,
+    "val_positive_rate": 0.0777,
+    "test_positive_rate": 0.0777
+  },
+  "architecture": {
+    "name": "TemporalSensorFusionCNN",
+    "sensor_groups": {
+      "thermal": [
+        "air_temp_k",
+        "process_temp_k",
+        "humidity_pct"
+      ],
+      "mechanical": [
+        "rotational_speed_rpm",
+        "torque_nm",
+        "tool_wear_min",
+        "vibration_mm_s",
+        "type_H",
+        "type_L",
+        "type_M"
+      ],
+      "electrical": [
+        "pressure_bar",
+        "current_a",
+        "acoustic_db"
+      ]
+    }
+  },
+  "calibration": {
+    "brier_score": 0.0397,
+    "plot_path": "outputs/v2/calibration_curve.png"
+  },
+  "branch_importance": [
+    {
+      "branch": "electrical",
+      "baseline_pr_auc": 0.889,
+      "ablated_pr_auc": 0.406,
+      "pr_auc_drop": 0.483,
+      "baseline_roc_auc": 0.9928,
+      "ablated_roc_auc": 0.9299,
+      "roc_auc_drop": 0.0629
+    },
+    {
+      "branch": "thermal",
+      "baseline_pr_auc": 0.889,
+      "ablated_pr_auc": 0.7216,
+      "pr_auc_drop": 0.1674,
+      "baseline_roc_auc": 0.9928,
+      "ablated_roc_auc": 0.9819,
+      "roc_auc_drop": 0.0109
+    },
+    {
+      "branch": "mechanical",
+      "baseline_pr_auc": 0.889,
+      "ablated_pr_auc": 0.9097,
+      "pr_auc_drop": -0.0207,
+      "baseline_roc_auc": 0.9928,
+      "ablated_roc_auc": 0.9931,
+      "roc_auc_drop": -0.0003
+    }
+  ],
+  "threshold_selection": {
+    "threshold": 0.375,
+    "precision": 0.25,
+    "recall": 0.75,
+    "fbeta": 0.625,
+    "precision_floor_met": true,
+    "strategy": "Best F3.0 threshold while keeping precision >= 0.25"
+  },
+  "classification": {
+    "roc_auc": 0.9928,
+    "pr_auc": 0.889,
+    "brier_score": 0.0397,
+    "precision": 0.6667,
+    "recall": 1.0,
+    "fbeta": 0.9524,
+    "accuracy": 0.9612,
+    "true_negatives": 182,
+    "false_positives": 8,
+    "false_negatives": 0,
+    "true_positives": 16,
+    "confusion_matrix": [
+      [
+        182,
+        8
+      ],
+      [
+        0,
+        16
+      ]
+    ],
+    "classification_report": "              precision    recall  f1-score   support\n\n      Normal     1.0000    0.9579    0.9785       190\n     Failure     0.6667    1.0000    0.8000        16\n\n    accuracy                         0.9612       206\n   macro avg     0.8333    0.9789    0.8892       206\nweighted avg     0.9741    0.9612    0.9646       206\n"
+  }
+}
