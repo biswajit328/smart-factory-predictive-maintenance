@@ -13,6 +13,7 @@ def _env_float(name: str, default: float) -> float:
 def _env_path(name: str, default: Path) -> Path:
     return Path(os.getenv(name, str(default))).expanduser()
 
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data"
 OUTPUT_DIR = _env_path("PM_OUTPUT_DIR", ROOT_DIR / "outputs")
@@ -25,6 +26,7 @@ def repo_relative(path: str | Path) -> str:
         return resolved.relative_to(ROOT_DIR).as_posix()
     except ValueError:
         return str(path)
+
 
 RAW_DATA_PATH = _env_path("PM_RAW_DATA_PATH", DATA_DIR / "predictive_maintenance.csv")
 MODEL_BUNDLE_PATH = OUTPUT_DIR / "model_bundle.joblib"

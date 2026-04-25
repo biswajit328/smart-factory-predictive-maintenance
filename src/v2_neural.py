@@ -65,9 +65,7 @@ def build_sequence_dataset(
         for end_index in range(window_size - 1, len(machine_frame)):
             window_frame = machine_frame.iloc[end_index - window_size + 1 : end_index + 1]
             for group_name, columns in FEATURE_GROUPS.items():
-                grouped_inputs[group_name].append(
-                    window_frame[columns].to_numpy(dtype=np.float32)
-                )
+                grouped_inputs[group_name].append(window_frame[columns].to_numpy(dtype=np.float32))
             labels.append(float(machine_frame.loc[end_index, "failure_next_horizon"]))
             metadata_rows.append(
                 {
@@ -76,15 +74,12 @@ def build_sequence_dataset(
                     "timestamp": machine_frame.loc[end_index, "timestamp"],
                     "step": int(machine_frame.loc[end_index, "step"]),
                     "breakdown_event": int(machine_frame.loc[end_index, "breakdown_event"]),
-                    "failure_next_horizon": int(
-                        machine_frame.loc[end_index, "failure_next_horizon"]
-                    ),
+                    "failure_next_horizon": int(machine_frame.loc[end_index, "failure_next_horizon"]),
                 }
             )
 
     inputs = {
-        group_name: np.asarray(values, dtype=np.float32)
-        for group_name, values in grouped_inputs.items()
+        group_name: np.asarray(values, dtype=np.float32) for group_name, values in grouped_inputs.items()
     }
     return SequenceDataset(
         inputs=inputs,
@@ -133,10 +128,7 @@ def build_split_masks(metadata: pd.DataFrame, split_ids: dict[str, list[str]]) -
 
 
 def subset_inputs(inputs: dict[str, np.ndarray], mask: np.ndarray) -> dict[str, np.ndarray]:
-    return {
-        group_name: values[mask]
-        for group_name, values in inputs.items()
-    }
+    return {group_name: values[mask] for group_name, values in inputs.items()}
 
 
 def fit_branch_scalers(train_inputs: dict[str, np.ndarray]) -> dict[str, StandardScaler]:
@@ -155,9 +147,9 @@ def transform_branch_inputs(
     transformed = {}
     for group_name, values in inputs.items():
         scaler = scalers[group_name]
-        transformed[group_name] = scaler.transform(
-            values.reshape(-1, values.shape[-1])
-        ).reshape(values.shape).astype(np.float32)
+        transformed[group_name] = (
+            scaler.transform(values.reshape(-1, values.shape[-1])).reshape(values.shape).astype(np.float32)
+        )
     return transformed
 
 

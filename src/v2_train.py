@@ -119,10 +119,7 @@ def _compute_branch_importance(
     rows = []
 
     for group_name in test_inputs:
-        ablated_inputs = {
-            name: values.copy()
-            for name, values in test_inputs.items()
-        }
+        ablated_inputs = {name: values.copy() for name, values in test_inputs.items()}
         ablated_inputs[group_name] = np.zeros_like(ablated_inputs[group_name])
 
         ablated_probabilities = model.predict(ablated_inputs, verbose=0).ravel()

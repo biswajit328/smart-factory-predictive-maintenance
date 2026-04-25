@@ -94,10 +94,7 @@ class NeuralPredictiveMaintenanceService:
             for group_name, columns in FEATURE_GROUPS.items()
         }
         transformed = transform_single_window(grouped, self.scalers)
-        return {
-            group_name: values[np.newaxis, ...]
-            for group_name, values in transformed.items()
-        }
+        return {group_name: values[np.newaxis, ...] for group_name, values in transformed.items()}
 
     def _build_recommendation(self, probability: float) -> tuple[str, str]:
         if probability >= self.probability_threshold:
@@ -191,13 +188,10 @@ def main() -> None:
     args = parser.parse_args()
     if args.live_demo:
         predictions_df, dashboard_path = run_live_demo(output_path=args.output)
-        top_alerts = (
-            predictions_df.sort_values(
-                ["failure_probability", "timestamp"],
-                ascending=[False, True],
-            )
-            .head(5)
-        )
+        top_alerts = predictions_df.sort_values(
+            ["failure_probability", "timestamp"],
+            ascending=[False, True],
+        ).head(5)
         print(top_alerts.to_string(index=False))
         print(f"\nDashboard written to {dashboard_path}")
         return

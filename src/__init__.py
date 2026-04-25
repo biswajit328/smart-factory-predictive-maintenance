@@ -1,2 +1,1 @@
 """Predictive maintenance package."""
-

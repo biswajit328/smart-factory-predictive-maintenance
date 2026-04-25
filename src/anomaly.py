@@ -59,4 +59,3 @@ def evaluate_anomaly_detector(model: IsolationForest, threshold: float, X_matrix
         "recall": round(float(recall), 4),
         "f1": round(float(f1), 4),
     }
-

@@ -88,9 +88,7 @@ def choose_probability_threshold(
 
         if best_any is None or candidate > best_any:
             best_any = candidate
-        if precision >= precision_floor and (
-            best_with_floor is None or candidate > best_with_floor
-        ):
+        if precision >= precision_floor and (best_with_floor is None or candidate > best_with_floor):
             best_with_floor = candidate
 
     if best_with_floor is not None:

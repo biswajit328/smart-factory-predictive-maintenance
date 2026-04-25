@@ -94,11 +94,7 @@ def _simulate_machine_records(
             + rng.normal(0, max(profile["air_temp_std"], 0.35) * 0.35)
         )
         process_temp = (
-            air_temp
-            + profile["process_gap_mean"]
-            + 1.7 * load
-            + 3.8 * fault_progress
-            + rng.normal(0, 0.45)
+            air_temp + profile["process_gap_mean"] + 1.7 * load + 3.8 * fault_progress + rng.normal(0, 0.45)
         )
         rotational_speed = (
             profile["rpm_mean"]
@@ -112,19 +108,9 @@ def _simulate_machine_records(
             + 10.0 * fault_progress
             + rng.normal(0, max(profile["torque_std"], 1.0) * 0.15)
         )
-        vibration = (
-            1.1
-            + 0.024 * torque
-            + 0.0035 * wear
-            + 2.6 * fault_progress
-            + rng.normal(0, 0.06)
-        )
+        vibration = 1.1 + 0.024 * torque + 0.0035 * wear + 2.6 * fault_progress + rng.normal(0, 0.06)
         pressure = (
-            5.2
-            + 0.0014 * rotational_speed
-            + 0.022 * torque
-            + 0.75 * fault_progress
-            + rng.normal(0, 0.07)
+            5.2 + 0.0014 * rotational_speed + 0.022 * torque + 0.75 * fault_progress + rng.normal(0, 0.07)
         )
         current = (
             8.5
@@ -132,12 +118,7 @@ def _simulate_machine_records(
             + 2.8 * fault_progress
             + rng.normal(0, 0.18)
         )
-        acoustic = (
-            54.0
-            + 6.8 * vibration
-            + 2.5 * fault_progress
-            + rng.normal(0, 0.35)
-        )
+        acoustic = 54.0 + 6.8 * vibration + 2.5 * fault_progress + rng.normal(0, 0.35)
         humidity = 46.0 + 6.5 * np.sin((step + machine_index) / 20) + rng.normal(0, 1.0)
         breakdown_event = int(step == failure_step)
 
