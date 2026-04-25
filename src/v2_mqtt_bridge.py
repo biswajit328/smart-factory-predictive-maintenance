@@ -101,7 +101,9 @@ def run_bridge(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Bridge MQTT sensor events into the FastAPI prediction endpoint.")
+    parser = argparse.ArgumentParser(
+        description="Bridge MQTT sensor events into the FastAPI prediction endpoint."
+    )
     parser.add_argument("--broker-host", default=MQTT_BROKER_HOST)
     parser.add_argument("--broker-port", type=int, default=MQTT_BROKER_PORT)
     parser.add_argument("--topic", default=MQTT_SENSOR_TOPIC)

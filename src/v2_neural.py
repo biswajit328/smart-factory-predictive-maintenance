@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from typing import TypedDict
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 os.environ.setdefault("KERAS_BACKEND", "tensorflow")
@@ -24,7 +25,12 @@ from .config import (
     V2_THRESHOLD_PRECISION_FLOOR,
     V2_WINDOW_SIZE,
 )
-from .model import choose_probability_threshold, evaluate_classifier
+from .model import (
+    ClassificationMetricsDict,
+    ThresholdSelectionDict,
+    choose_probability_threshold,
+    evaluate_classifier,
+)
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -35,6 +41,11 @@ class SequenceDataset:
     inputs: dict[str, np.ndarray]
     labels: np.ndarray
     metadata: pd.DataFrame
+
+
+class TemporalFusionMetrics(TypedDict):
+    threshold_selection: ThresholdSelectionDict
+    classification: ClassificationMetricsDict
 
 
 def add_type_indicator_columns(stream_df: pd.DataFrame) -> pd.DataFrame:
@@ -55,7 +66,7 @@ def build_sequence_dataset(
 ) -> SequenceDataset:
     prepared = add_type_indicator_columns(stream_df)
 
-    grouped_inputs = {group_name: [] for group_name in FEATURE_GROUPS}
+    grouped_inputs: dict[str, list[np.ndarray]] = {group_name: [] for group_name in FEATURE_GROUPS}
     labels = []
     metadata_rows: list[dict[str, object]] = []
 
@@ -65,9 +76,7 @@ def build_sequence_dataset(
         for end_index in range(window_size - 1, len(machine_frame)):
             window_frame = machine_frame.iloc[end_index - window_size + 1 : end_index + 1]
             for group_name, columns in FEATURE_GROUPS.items():
-                grouped_inputs[group_name].append(
-                    window_frame[columns].to_numpy(dtype=np.float32)
-                )
+                grouped_inputs[group_name].append(window_frame[columns].to_numpy(dtype=np.float32))
             labels.append(float(machine_frame.loc[end_index, "failure_next_horizon"]))
             metadata_rows.append(
                 {
@@ -76,15 +85,12 @@ def build_sequence_dataset(
                     "timestamp": machine_frame.loc[end_index, "timestamp"],
                     "step": int(machine_frame.loc[end_index, "step"]),
                     "breakdown_event": int(machine_frame.loc[end_index, "breakdown_event"]),
-                    "failure_next_horizon": int(
-                        machine_frame.loc[end_index, "failure_next_horizon"]
-                    ),
+                    "failure_next_horizon": int(machine_frame.loc[end_index, "failure_next_horizon"]),
                 }
             )
 
     inputs = {
-        group_name: np.asarray(values, dtype=np.float32)
-        for group_name, values in grouped_inputs.items()
+        group_name: np.asarray(values, dtype=np.float32) for group_name, values in grouped_inputs.items()
     }
     return SequenceDataset(
         inputs=inputs,
@@ -133,10 +139,7 @@ def build_split_masks(metadata: pd.DataFrame, split_ids: dict[str, list[str]]) -
 
 
 def subset_inputs(inputs: dict[str, np.ndarray], mask: np.ndarray) -> dict[str, np.ndarray]:
-    return {
-        group_name: values[mask]
-        for group_name, values in inputs.items()
-    }
+    return {group_name: values[mask] for group_name, values in inputs.items()}
 
 
 def fit_branch_scalers(train_inputs: dict[str, np.ndarray]) -> dict[str, StandardScaler]:
@@ -155,9 +158,9 @@ def transform_branch_inputs(
     transformed = {}
     for group_name, values in inputs.items():
         scaler = scalers[group_name]
-        transformed[group_name] = scaler.transform(
-            values.reshape(-1, values.shape[-1])
-        ).reshape(values.shape).astype(np.float32)
+        transformed[group_name] = (
+            scaler.transform(values.reshape(-1, values.shape[-1])).reshape(values.shape).astype(np.float32)
+        )
     return transformed
 
 
@@ -276,7 +279,7 @@ def evaluate_temporal_fusion_model(
     val_labels: np.ndarray,
     test_inputs: dict[str, np.ndarray],
     test_labels: np.ndarray,
-) -> tuple[dict[str, object], np.ndarray]:
+) -> tuple[TemporalFusionMetrics, np.ndarray]:
     val_probabilities = predict_probabilities(model, val_inputs)
     threshold_selection = choose_probability_threshold(
         val_labels,
@@ -291,7 +294,7 @@ def evaluate_temporal_fusion_model(
         threshold=threshold_selection.threshold,
         beta=V2_THRESHOLD_BETA,
     )
-    metrics_payload = {
+    metrics_payload: TemporalFusionMetrics = {
         "threshold_selection": threshold_selection.to_dict(),
         "classification": classifier_metrics,
     }
