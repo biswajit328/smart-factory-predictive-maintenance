@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from typing import cast, TypedDict
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 os.environ.setdefault("KERAS_BACKEND", "tensorflow")
@@ -24,7 +25,12 @@ from .config import (
     V2_THRESHOLD_PRECISION_FLOOR,
     V2_WINDOW_SIZE,
 )
-from .model import choose_probability_threshold, evaluate_classifier
+from .model import (
+    ClassificationMetricsDict,
+    ThresholdSelectionDict,
+    choose_probability_threshold,
+    evaluate_classifier,
+)
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -35,6 +41,11 @@ class SequenceDataset:
     inputs: dict[str, np.ndarray]
     labels: np.ndarray
     metadata: pd.DataFrame
+
+
+class TemporalFusionMetrics(TypedDict):
+    threshold_selection: ThresholdSelectionDict
+    classification: ClassificationMetricsDict
 
 
 def add_type_indicator_columns(stream_df: pd.DataFrame) -> pd.DataFrame:
@@ -55,7 +66,7 @@ def build_sequence_dataset(
 ) -> SequenceDataset:
     prepared = add_type_indicator_columns(stream_df)
 
-    grouped_inputs = {group_name: [] for group_name in FEATURE_GROUPS}
+    grouped_inputs: dict[str, list[np.ndarray]] = {group_name: [] for group_name in FEATURE_GROUPS}
     labels = []
     metadata_rows: list[dict[str, object]] = []
 
@@ -268,7 +279,7 @@ def evaluate_temporal_fusion_model(
     val_labels: np.ndarray,
     test_inputs: dict[str, np.ndarray],
     test_labels: np.ndarray,
-) -> tuple[dict[str, object], np.ndarray]:
+) -> tuple[TemporalFusionMetrics, np.ndarray]:
     val_probabilities = predict_probabilities(model, val_inputs)
     threshold_selection = choose_probability_threshold(
         val_labels,
@@ -283,11 +294,11 @@ def evaluate_temporal_fusion_model(
         threshold=threshold_selection.threshold,
         beta=V2_THRESHOLD_BETA,
     )
-    metrics_payload = {
+    metrics_payload: TemporalFusionMetrics = {
         "threshold_selection": threshold_selection.to_dict(),
         "classification": classifier_metrics,
     }
-    return metrics_payload, test_probabilities
+    return cast(TemporalFusionMetrics, metrics_payload), test_probabilities
 
 
 def save_training_history_plot(history: keras.callbacks.History, output_path) -> None:

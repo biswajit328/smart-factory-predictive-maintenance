@@ -4,6 +4,7 @@ import argparse
 import json
 from collections import defaultdict, deque
 from pathlib import Path
+from typing import TypedDict, cast
 
 import joblib
 import keras
@@ -26,6 +27,36 @@ from .v2_neural import transform_single_window
 from .v2_streaming import iter_sensor_events, simulate_factory_stream
 
 
+class ServiceMetadata(TypedDict):
+    window_size: int
+    probability_threshold: float
+    required_sensor_columns: list[str]
+    type_values: list[str]
+    feature_groups: dict[str, list[str]]
+
+
+def _as_int(value: object, default: int = 0) -> int:
+    try:
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, (int, float, str)):
+            return int(value)
+    except (TypeError, ValueError):
+        return default
+    return default
+
+
+def _as_float(value: object, default: float = 0.0) -> float:
+    try:
+        if isinstance(value, bool):
+            return float(value)
+        if isinstance(value, (int, float, str)):
+            return float(value)
+    except (TypeError, ValueError):
+        return default
+    return default
+
+
 class SensorEventFusionBuffer:
     def __init__(self, required_sensors: list[str] | None = None):
         self.required_sensors = set(required_sensors or SIMULATED_SENSOR_COLUMNS)
@@ -39,12 +70,12 @@ class SensorEventFusionBuffer:
                 "machine_id": str(event["machine_id"]),
                 "machine_type": str(event["machine_type"]),
                 "timestamp": str(event["timestamp"]),
-                "step": int(event.get("step", 0)),
-                "breakdown_event": int(event.get("breakdown_event", 0)),
-                "failure_next_horizon": int(event.get("failure_next_horizon", 0)),
+                "step": _as_int(event.get("step", 0), 0),
+                "breakdown_event": _as_int(event.get("breakdown_event", 0), 0),
+                "failure_next_horizon": _as_int(event.get("failure_next_horizon", 0), 0),
             },
         )
-        row[str(event["sensor_name"])] = float(event["sensor_value"])
+        row[str(event["sensor_name"])] = _as_float(event["sensor_value"], 0.0)
 
         if self.required_sensors.issubset(row.keys()):
             fused_row = row.copy()
@@ -58,17 +89,25 @@ class NeuralPredictiveMaintenanceService:
         self,
         model=None,
         scalers=None,
-        metadata: dict[str, object] | None = None,
+        metadata: ServiceMetadata | None = None,
         model_path: str | Path = V2_MODEL_PATH,
         scalers_path: str | Path = V2_SCALERS_PATH,
         metadata_path: str | Path = V2_METADATA_PATH,
     ):
-        self.metadata = metadata or json.loads(Path(metadata_path).read_text(encoding="utf-8"))
+        if metadata is None:
+            loaded_metadata = cast(
+                ServiceMetadata, json.loads(Path(metadata_path).read_text(encoding="utf-8"))
+            )
+            self.metadata = loaded_metadata
+        else:
+            self.metadata = metadata
         self.model = model if model is not None else keras.models.load_model(model_path)
         self.scalers = scalers if scalers is not None else joblib.load(scalers_path)
-        self.window_size = int(self.metadata["window_size"])
-        self.probability_threshold = float(self.metadata["probability_threshold"])
-        self.machine_buffers = defaultdict(lambda: deque(maxlen=self.window_size))
+        self.window_size = _as_int(self.metadata["window_size"])
+        self.probability_threshold = _as_float(self.metadata["probability_threshold"])
+        self.machine_buffers: defaultdict[str, deque[dict[str, float]]] = defaultdict(
+            lambda: deque(maxlen=self.window_size)
+        )
         self.event_fusion_buffer = SensorEventFusionBuffer(
             required_sensors=self.metadata["required_sensor_columns"]
         )
@@ -80,7 +119,7 @@ class NeuralPredictiveMaintenanceService:
         )
 
     def _build_feature_row(self, fused_reading: dict[str, object]) -> dict[str, float]:
-        row = {column: float(fused_reading[column]) for column in SIMULATED_SENSOR_COLUMNS}
+        row = {column: _as_float(fused_reading[column]) for column in SIMULATED_SENSOR_COLUMNS}
         machine_type = str(fused_reading["machine_type"])
         for type_value in self.metadata["type_values"]:
             row[f"type_{type_value}"] = 1.0 if machine_type == type_value else 0.0
@@ -117,14 +156,14 @@ class NeuralPredictiveMaintenanceService:
             "machine_id": machine_id,
             "machine_type": str(fused_reading["machine_type"]),
             "timestamp": str(fused_reading["timestamp"]),
-            "step": int(fused_reading["step"]),
+            "step": _as_int(fused_reading["step"]),
             "failure_probability": round(probability, 4),
             "classification_flag": bool(probability >= self.probability_threshold),
             "risk_band": risk_band,
             "maintenance_priority": round(probability * 100, 2),
             "recommended_action": recommendation,
-            "breakdown_event": int(fused_reading.get("breakdown_event", 0)),
-            "failure_next_horizon": int(fused_reading.get("failure_next_horizon", 0)),
+            "breakdown_event": _as_int(fused_reading.get("breakdown_event", 0), 0),
+            "failure_next_horizon": _as_int(fused_reading.get("failure_next_horizon", 0), 0),
         }
 
     def ingest_event(self, event: dict[str, object]) -> dict[str, object] | None:

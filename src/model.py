@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -29,7 +30,7 @@ class ThresholdSelection:
     precision_floor_met: bool
     strategy: str
 
-    def to_dict(self) -> dict[str, float | bool | str]:
+    def to_dict(self) -> "ThresholdSelectionDict":
         return {
             "threshold": round(self.threshold, 4),
             "precision": round(self.precision, 4),
@@ -40,11 +41,36 @@ class ThresholdSelection:
         }
 
 
+class ThresholdSelectionDict(TypedDict):
+    threshold: float
+    precision: float
+    recall: float
+    fbeta: float
+    precision_floor_met: bool
+    strategy: str
+
+
+class ClassificationMetricsDict(TypedDict):
+    roc_auc: float
+    pr_auc: float
+    brier_score: float
+    precision: float
+    recall: float
+    fbeta: float
+    accuracy: float
+    true_negatives: int
+    false_positives: int
+    false_negatives: int
+    true_positives: int
+    confusion_matrix: list[list[int]]
+    classification_report: str
+
+
 def build_classifier(
     random_state: int = RANDOM_STATE,
-    **overrides: int | float | str,
+    **overrides: Any,
 ) -> RandomForestClassifier:
-    params = {
+    params: dict[str, Any] = {
         "n_estimators": 400,
         "max_depth": None,
         "min_samples_leaf": 2,
@@ -103,6 +129,8 @@ def choose_probability_threshold(
             strategy=strategy,
         )
 
+    if best_any is None:
+        raise ValueError("No threshold candidates were evaluated.")
     fbeta, recall, precision, threshold = best_any
     strategy = f"Fallback best F{beta:.1f} threshold because precision floor was not met"
     return ThresholdSelection(
@@ -149,7 +177,7 @@ def evaluate_classifier(
     probabilities,
     threshold: float,
     beta: float = THRESHOLD_BETA,
-) -> dict[str, float | int | list[list[int]] | str]:
+) -> ClassificationMetricsDict:
     y_true = np.asarray(y_true).astype(int)
     probabilities = np.asarray(probabilities, dtype=float)
     predictions = (probabilities >= threshold).astype(int)

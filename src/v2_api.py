@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 from .v2_inference import NeuralPredictiveMaintenanceService, run_live_demo
 
@@ -147,7 +147,7 @@ def create_app(service: NeuralPredictiveMaintenanceService | None = None) -> Fas
             service_instance = runtime.ensure_service()
         except FileNotFoundError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
-        return service_instance.metadata
+        return cast(dict[str, object], service_instance.metadata)
 
     @app.post("/stream/reset")
     def reset_stream() -> dict[str, str]:
