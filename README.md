@@ -14,6 +14,8 @@ Easy meaning: this is not only a model training notebook. I built the training p
 
 After running the v2 pipeline, the project generates visual and service outputs here:
 
+- Project preview: [`assets/project-preview.png`](assets/project-preview.png)
+- API contract preview: [`assets/api-contract.png`](assets/api-contract.png)
 - Dashboard report: [`outputs/v2/smart_factory_dashboard.html`](outputs/v2/smart_factory_dashboard.html)
 - Live predictions: [`outputs/v2/live_predictions.csv`](outputs/v2/live_predictions.csv)
 - API docs after starting the server: `http://127.0.0.1:8000/docs`
@@ -23,11 +25,9 @@ After running the v2 pipeline, the project generates visual and service outputs 
 - Calibration curve: [`outputs/v2/calibration_curve.png`](outputs/v2/calibration_curve.png)
 - Sensor branch importance: [`outputs/v2/branch_importance.png`](outputs/v2/branch_importance.png)
 
-![v2 training history](outputs/v2/training_history.png)
+![project preview](assets/project-preview.png)
 
-![v2 precision recall curve](outputs/v2/precision_recall_curve.png)
-
-![v2 branch importance](outputs/v2/branch_importance.png)
+![api contract preview](assets/api-contract.png)
 
 ## What This Project Does
 
@@ -256,6 +256,7 @@ This repo includes:
 - JSON-style logs through [`src/logging_utils.py`](src/logging_utils.py)
 - API examples in [`docs/api_examples.md`](docs/api_examples.md)
 - deployment notes in [`docs/deployment_notes.md`](docs/deployment_notes.md)
+- README asset builder in [`scripts/build_readme_assets.py`](scripts/build_readme_assets.py)
 
 ## FastAPI Endpoints
 
