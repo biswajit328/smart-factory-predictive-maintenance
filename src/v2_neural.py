@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import cast, TypedDict
+from typing import TypedDict
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 os.environ.setdefault("KERAS_BACKEND", "tensorflow")
@@ -298,7 +298,7 @@ def evaluate_temporal_fusion_model(
         "threshold_selection": threshold_selection.to_dict(),
         "classification": classifier_metrics,
     }
-    return cast(TemporalFusionMetrics, metrics_payload), test_probabilities
+    return metrics_payload, test_probabilities
 
 
 def save_training_history_plot(history: keras.callbacks.History, output_path) -> None:
