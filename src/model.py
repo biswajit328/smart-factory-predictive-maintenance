@@ -129,8 +129,7 @@ def choose_probability_threshold(
             strategy=strategy,
         )
 
-    if best_any is None:
-        raise ValueError("No valid threshold candidates found; verify probability and label inputs.")
+    assert best_any is not None
     fbeta, recall, precision, threshold = best_any
     strategy = f"Fallback best F{beta:.1f} threshold because precision floor was not met"
     return ThresholdSelection(
