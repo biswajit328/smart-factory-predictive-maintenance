@@ -63,11 +63,20 @@ def _as_int(
     strict: bool = False,
     field_name: str = "value",
 ) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if not isinstance(value, (int, float, str)):
+        return int(
+            _log_or_raise_coercion_error(
+                kind="integer",
+                field_name=field_name,
+                value=value,
+                default=default,
+                strict=strict,
+            )
+        )
     try:
-        if isinstance(value, bool):
-            return int(value)
-        if isinstance(value, (int, float, str)):
-            return int(value)
+        return int(value)
     except (TypeError, ValueError):
         return int(
             _log_or_raise_coercion_error(
@@ -78,15 +87,6 @@ def _as_int(
                 strict=strict,
             )
         )
-    return int(
-        _log_or_raise_coercion_error(
-            kind="integer",
-            field_name=field_name,
-            value=value,
-            default=default,
-            strict=strict,
-        )
-    )
 
 
 def _as_float(
@@ -96,11 +96,20 @@ def _as_float(
     strict: bool = False,
     field_name: str = "value",
 ) -> float:
+    if isinstance(value, bool):
+        return float(value)
+    if not isinstance(value, (int, float, str)):
+        return float(
+            _log_or_raise_coercion_error(
+                kind="float",
+                field_name=field_name,
+                value=value,
+                default=default,
+                strict=strict,
+            )
+        )
     try:
-        if isinstance(value, bool):
-            return float(value)
-        if isinstance(value, (int, float, str)):
-            return float(value)
+        return float(value)
     except (TypeError, ValueError):
         return float(
             _log_or_raise_coercion_error(
@@ -111,15 +120,6 @@ def _as_float(
                 strict=strict,
             )
         )
-    return float(
-        _log_or_raise_coercion_error(
-            kind="float",
-            field_name=field_name,
-            value=value,
-            default=default,
-            strict=strict,
-        )
-    )
 
 
 class SensorEventFusionBuffer:
