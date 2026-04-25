@@ -1,11 +1,84 @@
 services:
   api:
     build: .
+    command: python -m src.v2_api
     ports:
       - "8000:8000"
     environment:
       PM_API_HOST: 0.0.0.0
       PM_API_PORT: 8000
       PM_LOG_LEVEL: INFO
+      PM_REDIS_URL: redis://redis:6379/0
+      PM_DATABASE_URL: postgresql://maintenance:maintenance@postgres:5432/maintenance
+      PM_MQTT_BROKER_HOST: mqtt
+      PM_MQTT_BROKER_PORT: 1883
+      PM_API_PREDICT_EVENTS_URL: http://api:8000/predict/events
     volumes:
       - ./outputs:/app/outputs
+      - ./assets:/app/assets
+    depends_on:
+      - redis
+      - postgres
+      - mqtt
+
+  dashboard:
+    build: .
+    command: python -m src.v2_dashboard_server
+    ports:
+      - "8501:8501"
+    environment:
+      PM_DASHBOARD_HOST: 0.0.0.0
+      PM_DASHBOARD_PORT: 8501
+      PM_LOG_LEVEL: INFO
+    volumes:
+      - ./outputs:/app/outputs
+      - ./assets:/app/assets
+    depends_on:
+      - api
+
+  mqtt-bridge:
+    build: .
+    command: python -m src.v2_mqtt_bridge
+    environment:
+      PM_MQTT_BROKER_HOST: mqtt
+      PM_MQTT_BROKER_PORT: 1883
+      PM_MQTT_SENSOR_TOPIC: factory/sensors
+      PM_API_PREDICT_EVENTS_URL: http://api:8000/predict/events
+      PM_LOG_LEVEL: INFO
+    depends_on:
+      - api
+      - mqtt
+
+  mqtt-replay:
+    build: .
+    command: python -m src.v2_mqtt_replay --broker-host mqtt --topic factory/sensors --machines 4 --steps 60 --delay-seconds 0.02
+    profiles:
+      - replay
+    depends_on:
+      - mqtt
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: maintenance
+      POSTGRES_PASSWORD: maintenance
+      POSTGRES_DB: maintenance
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+volumes:
+  postgres-data:

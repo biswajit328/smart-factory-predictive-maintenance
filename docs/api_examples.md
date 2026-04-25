@@ -19,6 +19,12 @@ http://127.0.0.1:8000/docs
 curl http://127.0.0.1:8000/health
 ```
 
+## Infrastructure Check
+
+```bash
+curl http://127.0.0.1:8000/infrastructure
+```
+
 ## Example Fused Reading
 
 ```bash

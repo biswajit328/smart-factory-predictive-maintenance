@@ -13,6 +13,10 @@ import uvicorn
 from .config import (
     API_HOST,
     API_PORT,
+    DATABASE_URL,
+    MQTT_BROKER_HOST,
+    MQTT_BROKER_PORT,
+    REDIS_URL,
     SIMULATED_SENSOR_COLUMNS,
     V2_DASHBOARD_PATH,
     V2_LIVE_PREDICTIONS_PATH,
@@ -20,6 +24,7 @@ from .config import (
     V2_MODEL_PATH,
     V2_SCALERS_PATH,
 )
+from .infra_health import service_probe
 from .logging_utils import configure_logging, get_logger
 
 
@@ -126,6 +131,14 @@ def create_app(service: NeuralPredictiveMaintenanceService | None = None) -> Fas
             "artifacts": status,
             "service_loaded": runtime.service is not None,
             "loaded_at": runtime.loaded_at,
+        }
+
+    @app.get("/infrastructure")
+    def infrastructure() -> dict[str, object]:
+        return {
+            "redis": service_probe("redis", REDIS_URL),
+            "postgres": service_probe("postgres", DATABASE_URL),
+            "mqtt": service_probe("mqtt", MQTT_BROKER_HOST, MQTT_BROKER_PORT),
         }
 
     @app.get("/metadata")

@@ -76,8 +76,22 @@ THRESHOLD_BETA = _env_float("PM_THRESHOLD_BETA", 2.0)
 ANOMALY_QUANTILE = _env_float("PM_ANOMALY_QUANTILE", 0.95)
 
 API_HOST = os.getenv("PM_API_HOST", "127.0.0.1")
-API_PORT = _env_int("PM_API_PORT", 8000)
+API_PORT = _env_int("PM_API_PORT", _env_int("PORT", 8000))
+DASHBOARD_HOST = os.getenv("PM_DASHBOARD_HOST", "127.0.0.1")
+DASHBOARD_PORT = _env_int("PM_DASHBOARD_PORT", _env_int("PORT", 8501))
 LOG_LEVEL = os.getenv("PM_LOG_LEVEL", "INFO").upper()
+DATABASE_URL = os.getenv(
+    "PM_DATABASE_URL",
+    "postgresql://maintenance:maintenance@postgres:5432/maintenance",
+)
+REDIS_URL = os.getenv("PM_REDIS_URL", "redis://redis:6379/0")
+MQTT_BROKER_HOST = os.getenv("PM_MQTT_BROKER_HOST", "localhost")
+MQTT_BROKER_PORT = _env_int("PM_MQTT_BROKER_PORT", 1883)
+MQTT_SENSOR_TOPIC = os.getenv("PM_MQTT_SENSOR_TOPIC", "factory/sensors")
+API_PREDICT_EVENTS_URL = os.getenv(
+    "PM_API_PREDICT_EVENTS_URL",
+    f"http://{API_HOST}:{API_PORT}/predict/events",
+)
 
 SIMULATED_SENSOR_COLUMNS = [
     "air_temp_k",

@@ -16,6 +16,8 @@ After running the v2 pipeline, the project generates visual and service outputs 
 
 - Project preview: [`assets/project-preview.png`](assets/project-preview.png)
 - API contract preview: [`assets/api-contract.png`](assets/api-contract.png)
+- Demo walkthrough GIF: [`assets/demo-walkthrough.gif`](assets/demo-walkthrough.gif)
+- Static hosted-demo source: [`site/index.html`](site/index.html)
 - Dashboard report: [`outputs/v2/smart_factory_dashboard.html`](outputs/v2/smart_factory_dashboard.html)
 - Live predictions: [`outputs/v2/live_predictions.csv`](outputs/v2/live_predictions.csv)
 - API docs after starting the server: `http://127.0.0.1:8000/docs`
@@ -26,6 +28,8 @@ After running the v2 pipeline, the project generates visual and service outputs 
 - Sensor branch importance: [`outputs/v2/branch_importance.png`](outputs/v2/branch_importance.png)
 
 ![project preview](assets/project-preview.png)
+
+![demo walkthrough](assets/demo-walkthrough.gif)
 
 ![api contract preview](assets/api-contract.png)
 
@@ -88,6 +92,7 @@ The interesting part is the connection between the ML and the system design:
 - The output is not only `0` or `1`; it becomes a risk score and maintenance action.
 - The classical baseline is still kept, so the neural part has something honest to compare against.
 - The project includes API tests, Docker setup, and CI instead of only local scripts.
+- The local Compose stack includes API, dashboard, Redis, Postgres, MQTT broker, MQTT bridge, and replay worker.
 
 ## Current Results
 
@@ -162,6 +167,8 @@ FastAPI is enough for this stage. The API exposes health checks, metadata, predi
 - Plotly / Matplotlib
 - unittest
 - Docker
+- Redis / Postgres service wiring
+- MQTT-style sensor ingestion
 - GitHub Actions
 
 ## How To Run
@@ -246,6 +253,33 @@ Start the API:
 docker compose up api
 ```
 
+Start the API, dashboard, Redis, Postgres, MQTT broker, and MQTT bridge:
+
+```bash
+docker compose up api dashboard redis postgres mqtt mqtt-bridge
+```
+
+Replay simulated sensor events through MQTT:
+
+```bash
+docker compose --profile replay up mqtt-replay
+```
+
+Then open:
+
+```text
+API:       http://127.0.0.1:8000/docs
+Dashboard: http://127.0.0.1:8501
+```
+
+## Hosted Demo Path
+
+This repo includes a GitHub Pages workflow at [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
+
+It publishes the static demo in [`site/`](site/) after pushes to `main`. The demo is not a live model server; it is a hosted project walkthrough with the generated dashboard artifact and visual evidence.
+
+For the API, [`render.yaml`](render.yaml) provides a Docker-based deployment template for hosting the FastAPI service.
+
 ## Quality Checks
 
 This repo includes:
@@ -254,15 +288,20 @@ This repo includes:
 - GitHub Actions workflow in [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 - Docker setup through [`Dockerfile`](Dockerfile) and [`docker-compose.yml`](docker-compose.yml)
 - JSON-style logs through [`src/logging_utils.py`](src/logging_utils.py)
+- MQTT replay and bridge workers in [`src/v2_mqtt_replay.py`](src/v2_mqtt_replay.py) and [`src/v2_mqtt_bridge.py`](src/v2_mqtt_bridge.py)
 - API examples in [`docs/api_examples.md`](docs/api_examples.md)
 - deployment notes in [`docs/deployment_notes.md`](docs/deployment_notes.md)
+- model card in [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md)
+- data card in [`docs/DATA_CARD.md`](docs/DATA_CARD.md)
 - README asset builder in [`scripts/build_readme_assets.py`](scripts/build_readme_assets.py)
+- static demo-site builder in [`scripts/build_static_site.py`](scripts/build_static_site.py)
 
 ## FastAPI Endpoints
 
 | Endpoint | Purpose |
 |---|---|
 | `GET /health` | Check if the service and artifacts are available |
+| `GET /infrastructure` | Check configured Redis, Postgres, and MQTT reachability |
 | `GET /metadata` | View model settings and required sensor schema |
 | `POST /predict/fused` | Send one complete machine reading |
 | `POST /predict/events` | Send sensor events and let the API fuse them |
@@ -303,8 +342,13 @@ predictive_maintenance/
 |   |-- v2_train.py
 |   |-- v2_inference.py
 |   |-- v2_dashboard.py
+|   |-- v2_dashboard_server.py
+|   |-- v2_mqtt_bridge.py
+|   |-- v2_mqtt_replay.py
 |   `-- v2_api.py
 |-- tests/
+|-- docs/
+|-- site/
 |-- requirements.txt
 |-- pyproject.toml
 `-- README.md
@@ -341,6 +385,7 @@ The v2 pipeline saves:
 - The v2 smart-factory stream is simulated. It is useful for showing system design, but it is not the same as training on real factory telemetry.
 - The FastAPI service keeps stream buffers in memory. For production, I would move state to Redis or another external store.
 - There is no real message broker yet. MQTT or Kafka would make the streaming part more realistic.
+- The current MQTT path is a local replay/bridge setup, not a hardened production broker workflow.
 - The dashboard is generated as HTML. A proper web dashboard would be better for interactive monitoring.
 - The model should be recalibrated before any real maintenance use.
 
@@ -348,8 +393,9 @@ The v2 pipeline saves:
 
 The next practical upgrades would be:
 
-- Add MQTT or Kafka ingestion for live sensor messages.
-- Dockerize the API and model artifacts.
+- Replace the local MQTT replay with a real sensor stream or industrial dataset.
+- Add persistent Redis-backed stream state instead of in-memory buffers.
+- Store predictions and alert history in Postgres.
 - Add a small frontend dashboard for machine risk monitoring.
 - Add drift monitoring for sensor distributions.
 - Store predictions in a database for historical analysis.
